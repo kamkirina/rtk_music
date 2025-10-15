@@ -1,18 +1,18 @@
-import type { PlaylistData } from "../../api/playlistsApi.types"
+import type { PlaylistData } from '../../api/playlistsApi.types'
+import { PlaylistDescription } from './PlaylistDescription/PlaylistDescription'
+import { PlaylistCover } from './PlaylistCover/PlaylistCover'
 
 type Props = {
-    playlist: PlaylistData,
-    deletePlaylistHandler: (playlistId: string) => void,
-    editPlaylistHandler: (playlist: PlaylistData) => void,
+  playlist: PlaylistData
+  deletePlaylistHandler: (playlistId: string) => void
+  editPlaylistHandler: (playlist: PlaylistData) => void
 }
 
-
-export const PlaylistItem = ({playlist, deletePlaylistHandler, editPlaylistHandler}: Props) => {
+export const PlaylistItem = ({ playlist, deletePlaylistHandler, editPlaylistHandler }: Props) => {
   return (
     <>
-      <div>title: {playlist.attributes.title}</div>
-      <div>description: {playlist.attributes.description}</div>
-      <div>userName: {playlist.attributes.user.name}</div>
+      <PlaylistCover playlistId={playlist.id} images={playlist.attributes.images} />
+      <PlaylistDescription attributes={playlist.attributes} />
       <button onClick={() => deletePlaylistHandler(playlist.id)}>delete</button>
       <button onClick={() => editPlaylistHandler(playlist)}>update</button>
     </>
