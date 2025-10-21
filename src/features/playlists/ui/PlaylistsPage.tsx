@@ -9,7 +9,7 @@ import { PlaylistList } from './PlaylistList/PlaylistList'
 export const PlaylistsPage = () => {
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [size, setSize] = useState(16)
+  const [size, setSize] = useState(4)
   const debouncedSearch = useDebounceValue(search)
   const { data, isLoading } = useFetchPlaylistsQuery({
     search: debouncedSearch,
@@ -30,9 +30,10 @@ export const PlaylistsPage = () => {
   return (
     <div className={s.container}>
       <h1>Playlists page</h1>
-      <CreatePlaylistForm />
+      <CreatePlaylistForm setCurrentPage={setCurrentPage}/>
       <input type="search" placeholder="Search playlist by title" onChange={(event) => searchPlaylistHandler(event)} />
       <PlaylistList isLoading={isLoading} playlists={data?.data || []} />
+
       <Pagination
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
