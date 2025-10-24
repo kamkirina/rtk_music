@@ -1,8 +1,8 @@
-import type { FetchBaseQueryError } from "@reduxjs/toolkit/query"
-import { errorToast } from "./errorToast"
-import { isErrorWithProperty } from "./isErrorWithProperty"
-import { trimToMaxLength } from "./trimToMaxLength"
-import { isErrorWithDetailArray } from "./isErrorWithDetailArray"
+import type { FetchBaseQueryError } from '@reduxjs/toolkit/query'
+import { errorToast } from './errorToast'
+import { isErrorWithProperty } from './isErrorWithProperty'
+import { trimToMaxLength } from './trimToMaxLength'
+import { isErrorWithDetailArray } from './isErrorWithDetailArray'
 
 export const handleErrors = (error: FetchBaseQueryError) => {
   if (error) {
@@ -13,8 +13,15 @@ export const handleErrors = (error: FetchBaseQueryError) => {
       case 'TIMEOUT_ERROR':
         errorToast(error.error)
         break
- 
+
       case 400:
+        if (isErrorWithDetailArray(error.data)) {
+          if (error.data.errors[0].detail.includes('refresh')) return
+          errorToast(trimToMaxLength(error.data.errors[0].detail))
+        } else {
+          errorToast(JSON.stringify(error.data))
+        }
+        break
       case 403:
         if (isErrorWithDetailArray(error.data)) {
           errorToast(trimToMaxLength(error.data.errors[0].detail))
@@ -22,7 +29,7 @@ export const handleErrors = (error: FetchBaseQueryError) => {
           errorToast(JSON.stringify(error.data))
         }
         break
- 
+
       case 404:
         if (isErrorWithProperty(error.data, 'error')) {
           errorToast(error.data.error)
@@ -30,8 +37,7 @@ export const handleErrors = (error: FetchBaseQueryError) => {
           errorToast(JSON.stringify(error.data))
         }
         break
- 
-      case 401:
+
       case 429:
         if (isErrorWithProperty(error.data, 'message')) {
           errorToast(error.data.message)
@@ -39,7 +45,7 @@ export const handleErrors = (error: FetchBaseQueryError) => {
           errorToast(JSON.stringify(error.data))
         }
         break
- 
+
       default:
         if (error.status >= 500 && error.status < 600) {
           errorToast('Server error occurred. Please try again later.', error)
