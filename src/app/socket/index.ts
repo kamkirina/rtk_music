@@ -1,0 +1,1 @@
+export { subscribeToEvent } from './subscribeToEvent'
