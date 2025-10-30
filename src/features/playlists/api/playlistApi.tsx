@@ -1,25 +1,66 @@
-import type { Images } from '@/common/types'
 import type {
   CreatePlaylistArgs,
   FetchPlaylistsArgs,
-  PlaylistData,
-  PlaylistsResponse,
+  PlaylistCreatedEvent,
+  PlaylistUpdatedEvent,
   UpdatePlaylistArgs,
 } from './playlistsApi.types'
 import { baseApi } from '@/app/api/baseApi'
+import { playlistCreateResponseSchema, playlistsResponseSchema } from '../model/playlists.schemas'
+import { imagesSchema } from '@/common/schemas'
+import { withZodCatch } from '@/common/utils'
+import { SOCKET_EVENTS } from '@/common/constants'
+import { subscribeToEvent } from '@/app/socket'
 
 export const playlistsApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
-    fetchPlaylists: build.query<PlaylistsResponse, FetchPlaylistsArgs>({
-      query: (params) => ({ url: `playlists`, params }),
+    fetchPlaylists: build.query({
+      query: (params: FetchPlaylistsArgs) => ({ url: `playlists`, params }),
+      ...withZodCatch(playlistsResponseSchema),
+      keepUnusedDataFor: 0,
+      onCacheEntryAdded: async (_args, { cacheDataLoaded, updateCachedData, cacheEntryRemoved }) => {
+        await cacheDataLoaded
+
+        const unsubscribes = [
+          subscribeToEvent<PlaylistCreatedEvent>(SOCKET_EVENTS.PLAYLIST_CREATED, (msg) => {
+            // 1 вариант
+            const newPlaylist = msg.payload.data
+            updateCachedData((state) => {
+              state.data.pop()
+              state.data.unshift(newPlaylist)
+              state.meta.totalCount = state.meta.totalCount + 1
+              state.meta.pagesCount = Math.ceil(state.meta.totalCount / state.meta.pageSize)
+            })
+            // 2 вариант
+            // dispatch(playlistsApi.util.invalidateTags(['Playlist']))
+          }),
+          subscribeToEvent<PlaylistUpdatedEvent>(SOCKET_EVENTS.PLAYLIST_UPDATED, (msg) => {
+            // 1 вариант
+            const newPlaylist = msg.payload.data
+            updateCachedData((state) => {
+              const index = state.data.findIndex((playlist) => playlist.id === newPlaylist.id)
+              if (index !== -1) {
+                state.data[index] = { ...state.data[index], ...newPlaylist }
+              }
+            })
+            // 2 вариант
+            // dispatch(playlistsApi.util.invalidateTags(['Playlist']))
+          }),
+        ]
+
+        await cacheEntryRemoved
+
+        unsubscribes.forEach((unsubscribe) => unsubscribe())
+      },
       providesTags: ['Playlist'],
     }),
-    createPlaylists: build.mutation<{ data: PlaylistData }, CreatePlaylistArgs>({
-      query: (body) => ({
+    createPlaylists: build.mutation({
+      query: (body: CreatePlaylistArgs) => ({
         method: 'post',
         url: 'playlists',
         body,
       }),
+      ...withZodCatch(playlistCreateResponseSchema),
       invalidatesTags: ['Playlist'],
     }),
     deletePlaylists: build.mutation<void, string>({
@@ -67,8 +108,8 @@ export const playlistsApi = baseApi.injectEndpoints({
 
       invalidatesTags: ['Playlist'],
     }),
-    uploadPlaylistCover: build.mutation<Images, { playlistId: string; file: File }>({
-      query: ({ playlistId, file }) => {
+    uploadPlaylistCover: build.mutation({
+      query: ({ playlistId, file }: { playlistId: string; file: File }) => {
         const formData = new FormData()
         formData.append('file', file)
         return {
@@ -77,6 +118,7 @@ export const playlistsApi = baseApi.injectEndpoints({
           body: formData,
         }
       },
+      ...withZodCatch(imagesSchema),
       invalidatesTags: ['Playlist'],
     }),
     deletePlaylistCover: build.mutation<void, string>({
